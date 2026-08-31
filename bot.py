@@ -41,9 +41,17 @@ class Gillibot:
             except Exception as e:
                 print(f'[plugin error] {plugin.name}: {e}')
 
+    def _tick(self):
+        for plugin in self.plugins:
+            try:
+                plugin.on_tick()
+            except Exception as e:
+                print(f'[plugin tick error] {plugin.name}: {e}')
+
     def run(self):
         print(f'[Gillibot] Starting. Tailing {self.log_file}')
         self.rcon.say('^3Gillibot ^7online. Type ^2!help ^7for commands.')
+        last_tick = time.time()
 
         with open(self.log_file, 'r', encoding='utf-8', errors='replace') as f:
             f.seek(0, os.SEEK_END)  # start at end of file (live tail)
@@ -51,6 +59,10 @@ class Gillibot:
                 line = f.readline()
                 if not line:
                     time.sleep(0.1)
+                    now = time.time()
+                    if now - last_tick >= 5:
+                        last_tick = now
+                        self._tick()
                     continue
                 event = parse_line(line)
                 if event:

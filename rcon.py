@@ -28,6 +28,12 @@ class RconClient:
     def say(self, message):
         self.send(f'say {message}')
 
+    def bigtext(self, message):
+        self.send(f'bigtext "{message}"')
+
+    def centerprint(self, message):
+        self.send(f'cp "{message}"')
+
     def tell(self, client_id, message):
         self.send(f'tell {client_id} {message}')
 

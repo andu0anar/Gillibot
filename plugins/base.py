@@ -19,3 +19,4 @@ class Plugin:
     def on_kill(self, event): pass
     def on_say(self, event): pass
     def on_sayteam(self, event): pass
+    def on_tick(self): pass
