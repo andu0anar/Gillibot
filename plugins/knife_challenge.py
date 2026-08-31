@@ -2,8 +2,9 @@ import time
 from .base import Plugin
 
 KNIFE_MODS = {5, 6}
-TIME_LIMIT = 180       # 3 minutes for all modes
-WARN_AT = {60, 30, 10} # seconds remaining to announce
+BLED_MOD = 23          # UT_MOD_BLED — bleed-out kill, may predate the challenge
+TIME_LIMIT = 180
+WARN_AT = {60, 30, 10}
 
 
 class KnifeChallenge(Plugin):
@@ -23,10 +24,9 @@ class KnifeChallenge(Plugin):
 
         # Duel state
         self.duel_active = False
-        self.duel_pending = False
         self.duel_challenger_id = None
         self.duel_target_id = None
-        self.duel_win_kills = 1     # default: sudden death
+        self.duel_win_kills = 1
         self.duel_scores = {}
         self.duel_start_time = None
         self._duel_warned = set()
@@ -48,7 +48,6 @@ class KnifeChallenge(Plugin):
     def _reset_all(self):
         self.active = False
         self.duel_active = False
-        self.duel_pending = False
         self.scores = {}
         self.duel_scores = {}
         self.start_time = None
@@ -61,7 +60,7 @@ class KnifeChallenge(Plugin):
     # ------------------------------------------------------------------
 
     def start(self, caller_id=None):
-        if self.active or self.duel_active or self.duel_pending:
+        if self.active or self.duel_active:
             self.rcon.say('^3A Knife Challenge is already running!')
             return
         self.active = True
@@ -77,7 +76,7 @@ class KnifeChallenge(Plugin):
         self.rcon.say('^1===========================================')
 
     def stop(self, caller_id=None):
-        if not self.active and not self.duel_active and not self.duel_pending:
+        if not self.active and not self.duel_active:
             self.rcon.say('^3No Knife Challenge running.')
             return
         self._reset_all()
@@ -103,11 +102,11 @@ class KnifeChallenge(Plugin):
         self._warned.clear()
 
     # ------------------------------------------------------------------
-    # Targeted 1v1 duel
+    # Targeted 1v1 duel — starts immediately, no accept/decline
     # ------------------------------------------------------------------
 
     def start_duel(self, challenger_id, target_name, kill_target=1):
-        if self.active or self.duel_active or self.duel_pending:
+        if self.active or self.duel_active:
             self.rcon.say('^3A Knife Challenge is already running!')
             return
 
@@ -119,62 +118,25 @@ class KnifeChallenge(Plugin):
             self.rcon.tell(challenger_id, '^1You can\'t challenge yourself.')
             return
 
-        self.duel_pending = True
+        self.duel_active = True
         self.duel_challenger_id = challenger_id
         self.duel_target_id = target_id
         self.duel_win_kills = max(1, kill_target)
+        self.duel_scores = {challenger_id: 0, target_id: 0}
+        self.duel_start_time = time.time()
+        self._duel_warned.clear()
 
         c_name = self.names.get(challenger_id, f'Player {challenger_id}')
         t_name = self.names.get(target_id, f'Player {target_id}')
-
-        if self.duel_win_kills == 1:
-            mode_str = '^1SUDDEN DEATH'
-        else:
-            mode_str = f'^7First to ^2{self.duel_win_kills}'
+        mode_str = '^1SUDDEN DEATH' if self.duel_win_kills == 1 else f'^7First to ^2{self.duel_win_kills}'
 
         self.rcon.bigtext(f'^3{c_name} ^7vs ^3{t_name}')
         self.rcon.say('^1===========================================')
         self.rcon.say(f'^1>>>           ^3K N I F E   D U E L           ^1<<<')
         self.rcon.say('^1===========================================')
-        self.rcon.say(f'^3{c_name} ^7has challenged ^3{t_name} ^7to a duel!')
-        self.rcon.say(f'^7Mode: {mode_str} ^7| ^33 minute clock')
-        self.rcon.say(f'^3{t_name}^7: type ^2!accept ^7or ^1!decline')
-        self.rcon.say('^1===========================================')
-
-    def _accept_duel(self, cid):
-        if not self.duel_pending or cid != self.duel_target_id:
-            return
-        self.duel_pending = False
-        self.duel_active = True
-        self.duel_scores = {self.duel_challenger_id: 0, self.duel_target_id: 0}
-        self.duel_start_time = time.time()
-        self._duel_warned.clear()
-
-        c_name = self.names.get(self.duel_challenger_id, '?')
-        t_name = self.names.get(self.duel_target_id, '?')
-
-        if self.duel_win_kills == 1:
-            mode_str = '^1SUDDEN DEATH'
-        else:
-            mode_str = f'^7First to ^2{self.duel_win_kills}'
-
-        self.rcon.bigtext('^1KNIFE DUEL — FIGHT!')
-        self.rcon.say('^1===========================================')
-        self.rcon.say(f'^1>>>           ^3D U E L   B E G I N S           ^1<<<')
-        self.rcon.say('^1===========================================')
         self.rcon.say(f'^3{c_name} ^7vs ^3{t_name} ^7— {mode_str}')
-        self.rcon.say('^7Blades only. ^1Guns = instant forfeit.')
+        self.rcon.say('^7Blades only. ^1Guns = instant forfeit. ^33 min clock.')
         self.rcon.say('^1===========================================')
-
-    def _decline_duel(self, cid):
-        if not self.duel_pending or cid != self.duel_target_id:
-            return
-        t_name = self.names.get(self.duel_target_id, '?')
-        c_name = self.names.get(self.duel_challenger_id, '?')
-        self.rcon.say(f'^3{t_name} ^7declined ^3{c_name}\'s ^7duel challenge.')
-        self.duel_pending = False
-        self.duel_challenger_id = None
-        self.duel_target_id = None
 
     def _record_duel_result(self, winner_name, loser_name):
         stats = self.bot.get_plugin('stats')
@@ -227,8 +189,8 @@ class KnifeChallenge(Plugin):
         self.duel_scores[killer_id] = self.duel_scores.get(killer_id, 0) + 1
         kills = self.duel_scores[killer_id]
         other_kills = self.duel_scores.get(other_id, 0)
-
         remaining = int(self._remaining(self.duel_start_time))
+
         self.rcon.say(
             f'^3{killer_name} ^7knifed ^1{self.names.get(victim_id, event["victim_name"])}^7! '
             f'^2{kills}^7-^2{other_kills} ^7| ^3{remaining}s left'
@@ -257,10 +219,9 @@ class KnifeChallenge(Plugin):
         cid = event['client_id']
         self.scores.pop(cid, None)
         self.names.pop(cid, None)
-        if (self.duel_active or self.duel_pending) and cid in (self.duel_challenger_id, self.duel_target_id):
+        if self.duel_active and cid in (self.duel_challenger_id, self.duel_target_id):
             self.rcon.say('^7A duellist disconnected — knife duel ^1cancelled^7.')
             self.duel_active = False
-            self.duel_pending = False
             self.duel_scores = {}
             self.duel_start_time = None
 
@@ -268,8 +229,6 @@ class KnifeChallenge(Plugin):
         self._reset_all()
 
     def on_tick(self):
-        now = time.time()
-
         if self.active and self.start_time:
             remaining = self._remaining(self.start_time)
             warn_key = next((w for w in WARN_AT if abs(remaining - w) < 5 and w not in self._warned), None)
@@ -307,7 +266,8 @@ class KnifeChallenge(Plugin):
             return
 
         if mod_id not in KNIFE_MODS:
-            self.rcon.say(f'^3{event["killer_name"]} ^7used a gun! ^1SHAME!')
+            if mod_id != BLED_MOD:
+                self.rcon.say(f'^3{event["killer_name"]} ^7used a gun! ^1SHAME!')
             return
 
         self.scores[killer_id] = self.scores.get(killer_id, 0) + 1
@@ -339,20 +299,13 @@ class KnifeChallenge(Plugin):
 
         if lower == '!knife':
             self.start(cid)
-
         elif lower.startswith('!knch '):
-            # parse: !knch <name> [kills]
             parts = text[6:].strip().rsplit(None, 1)
             if len(parts) == 2 and parts[1].isdigit():
                 target, kill_target = parts[0], int(parts[1])
             else:
                 target, kill_target = (parts[0] if parts else ''), 1
             self.start_duel(cid, target, kill_target)
-
-        elif lower == '!accept':
-            self._accept_duel(cid)
-        elif lower == '!decline':
-            self._decline_duel(cid)
         elif lower == '!knifeoff':
             self.stop(cid)
         elif lower == '!knifescores':

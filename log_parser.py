@@ -39,7 +39,7 @@ _RE_KILL = re.compile(
     r'^\s*\d+:\d+\s+Kill:\s+(\d+)\s+(\d+)\s+(\d+):\s+(.+)\s+killed\s+(.+)\s+by\s+(\S+)'
 )
 _RE_CLIENT_INFO = re.compile(
-    r'^\s*\d+:\d+\s+ClientUserinfoChanged:\s+(\d+)\s+n\\([^\\]+)\\'
+    r'^\s*\d+:\d+\s+ClientUserinfoChanged:\s+(\d+)\s+n\\([^\\]+)'
 )
 _RE_CLIENT_CONNECT = re.compile(r'^\s*\d+:\d+\s+ClientConnect:\s+(\d+)')
 _RE_CLIENT_DISCONNECT = re.compile(r'^\s*\d+:\d+\s+ClientDisconnect:\s+(\d+)')

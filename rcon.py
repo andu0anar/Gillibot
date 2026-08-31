@@ -12,12 +12,12 @@ class RconClient:
         self.timeout = timeout
 
     def send(self, command):
+        """Send and wait for response — use for status/cvar queries only."""
         payload = HEADER + f'rcon {self.password} {command}'.encode()
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(self.timeout)
         try:
             sock.sendto(payload, (self.host, self.port))
-            time.sleep(0.05)
             response = sock.recv(4096)
             return response[4:].decode(errors='replace').strip()
         except socket.timeout:
@@ -25,29 +25,39 @@ class RconClient:
         finally:
             sock.close()
 
+    def fire(self, command):
+        """Send without waiting for a response — for say/bigtext/kick etc."""
+        payload = HEADER + f'rcon {self.password} {command}'.encode()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.sendto(payload, (self.host, self.port))
+        finally:
+            sock.close()
+
     def say(self, message):
-        self.send(f'say {message}')
+        self.fire(f'say {message}')
+        time.sleep(0.05)  # brief gap so lines render separately in chat
 
     def bigtext(self, message):
-        self.send(f'bigtext "{message}"')
+        self.fire(f'bigtext "{message}"')
 
     def centerprint(self, message):
-        self.send(f'cp "{message}"')
+        self.fire(f'cp "{message}"')
 
     def tell(self, client_id, message):
-        self.send(f'tell {client_id} {message}')
+        self.fire(f'tell {client_id} {message}')
 
     def kick(self, client_id, reason=''):
-        self.send(f'clientkick {client_id} "{reason}"')
+        self.fire(f'clientkick {client_id} "{reason}"')
 
     def slap(self, client_id):
-        self.send(f'slap {client_id}')
+        self.fire(f'slap {client_id}')
 
     def nuke(self, client_id):
-        self.send(f'nuke {client_id}')
+        self.fire(f'nuke {client_id}')
 
     def mute(self, client_id):
-        self.send(f'mute {client_id}')
+        self.fire(f'mute {client_id}')
 
     def set_team(self, client_id, team):
         # team: red, blue, spectator, free
