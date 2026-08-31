@@ -1,0 +1,2 @@
+# No external deps required — stdlib only
+# Python 3.8+
