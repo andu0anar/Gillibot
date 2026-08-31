@@ -176,6 +176,11 @@ class KnifeChallenge(Plugin):
         self.duel_challenger_id = None
         self.duel_target_id = None
 
+    def _record_duel_result(self, winner_name, loser_name):
+        stats = self.bot.get_plugin('stats')
+        if stats:
+            stats.record_duel_win(winner_name, loser_name)
+
     def _expire_duel(self):
         c_name = self.names.get(self.duel_challenger_id, '?')
         t_name = self.names.get(self.duel_target_id, '?')
@@ -187,8 +192,10 @@ class KnifeChallenge(Plugin):
             self.rcon.say(f'^7{c_name} ^3{c_kills} ^7— ^3{t_kills} ^7{t_name} ^7— ^3DRAW!')
         elif c_kills > t_kills:
             self.rcon.say(f'^3{c_name} ^7wins on points! ^2{c_kills}^7-^1{t_kills}')
+            self._record_duel_result(c_name, t_name)
         else:
             self.rcon.say(f'^3{t_name} ^7wins on points! ^2{t_kills}^7-^1{c_kills}')
+            self._record_duel_result(t_name, c_name)
 
         self.duel_active = False
         self.duel_scores = {}
@@ -210,6 +217,7 @@ class KnifeChallenge(Plugin):
         if mod_id not in KNIFE_MODS:
             winner_name = self.names.get(other_id, '?')
             self.rcon.say(f'^3{killer_name} ^7used a gun! ^1FORFEIT! ^3{winner_name} ^7wins!')
+            self._record_duel_result(winner_name, killer_name)
             self.duel_active = False
             self.duel_scores = {}
             self.duel_start_time = None
@@ -227,6 +235,8 @@ class KnifeChallenge(Plugin):
         )
 
         if kills >= self.duel_win_kills:
+            loser_name = self.names.get(other_id, '?')
+            self._record_duel_result(killer_name, loser_name)
             self.rcon.bigtext(f'^3{killer_name} ^7WINS THE DUEL!')
             self.rcon.say('^1===========================================')
             self.rcon.say(f'^1>>> ^3{killer_name} ^7WINS THE KNIFE DUEL! ^1<<<')

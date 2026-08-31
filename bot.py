@@ -6,6 +6,7 @@ from rcon import RconClient
 from log_parser import parse_line
 from plugins.knife_challenge import KnifeChallenge
 from plugins.admin import Admin
+from plugins.stats import Stats
 
 
 class Gillibot:
@@ -25,7 +26,14 @@ class Gillibot:
         self.plugins = [
             KnifeChallenge(self),
             Admin(self),
+            Stats(self),
         ]
+
+    def get_plugin(self, name):
+        for p in self.plugins:
+            if p.name == name:
+                return p
+        return None
 
     def _dispatch(self, event):
         if event['event'] == 'name':

@@ -49,7 +49,7 @@ class Admin(Plugin):
                 self.rcon.say(f'^3{target_name} ^7has been ^1muted^7.')
 
         elif text == '!help':
-            self.rcon.tell(cid, '^3Commands: ^7!knife  !knch <name>  !accept  !decline  !knifeoff  !knifescores  !players  !kick <name>  !slap <name>  !mute <name>')
+            self.rcon.tell(cid, '^3Commands: ^7!knife  !knch <name>  !accept  !decline  !knifeoff  !knifescores  !knstats [name]  !kntop  !players  !kick <name>  !slap <name>  !mute <name>')
 
     def _find_player(self, name_fragment):
         name_fragment = name_fragment.lower()
